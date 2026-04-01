@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card shadow-sm border-0 mt-5">
+      <div class="card-body p-5">
+        <h4 class="fw-bold text-center mb-4">
+          <i class="fas fa-lock text-primary me-2"></i>Login
+        </h4>
+
+        <div id="error-msg" class="alert alert-danger d-none"></div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Username</label>
+          <input type="text" id="username" class="form-control"
+            placeholder="Enter username" autofocus>
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold">Password</label>
+          <input type="password" id="password" class="form-control"
+            placeholder="Enter password">
+        </div>
+
+        <button id="login-btn" class="btn btn-primary w-100 py-2 fw-semibold">
+          <span id="btn-text">Login</span>
+          <span id="btn-spinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+        </button>
+
+        <p class="text-center mt-3 mb-0">
+          Don't have an account? <a href="/accounts/register/">Register</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function doLogin() {
+  const username = $('#username').val().trim();
+  const password = $('#password').val();
+
+  if (!username || !password) {
+    $('#error-msg').text('Please enter username and password.').removeClass('d-none');
+    return;
+  }
+
+  $('#btn-text').text('Logging in...');
+  $('#btn-spinner').removeClass('d-none');
+  $('#login-btn').prop('disabled', true);
+  $('#error-msg').addClass('d-none');
+
+  $.ajax({
+    url: '/accounts/api/login/',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ username, password }),
+    success: function(res) {
+      // Store JWT tokens
+      Auth.setTokens(res.access, res.refresh);
+
+      // Redirect — use ?next param if present, else go to checker
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next') || '/checker/';
+      window.location.href = next;
+    },
+    error: function(xhr) {
+      const msg = xhr.responseJSON?.detail || 'Invalid username or password.';
+      $('#error-msg').text(msg).removeClass('d-none');
+      $('#btn-text').text('Login');
+      $('#btn-spinner').addClass('d-none');
+      $('#login-btn').prop('disabled', false);
+    }
+  });
+}
+
+$('#login-btn').click(doLogin);
+$('#password').keypress(function(e) {
+  if (e.which === 13) doLogin();
+});
+$('#username').keypress(function(e) {
+  if (e.which === 13) $('#password').focus();
+});
+</script>
+{% endblock %}

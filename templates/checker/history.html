@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% block title %}Check History{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="fw-bold mb-0">Check History</h2>
+      <a href="/checker/" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>New Check
+      </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body py-3">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-3">
+            <select id="filter-verdict" class="form-select form-select-sm">
+              <option value="">All Verdicts</option>
+              <option value="clean">Clean</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select id="filter-type" class="form-select form-select-sm">
+              <option value="">All Types</option>
+              <option value="text">Text vs Text</option>
+              <option value="web">Text vs Web</option>
+              <option value="file">File vs Web</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <input type="text" id="filter-search" class="form-control form-control-sm"
+              placeholder="Search text...">
+          </div>
+          <div class="col-md-2">
+            <button id="btn-filter" class="btn btn-outline-primary btn-sm w-100">Filter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="history-loading" class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+      <p class="text-muted mt-2">Loading history...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="history-empty" class="text-center py-5 d-none">
+      <i class="fas fa-history fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">No checks yet</h5>
+      <a href="/checker/" class="btn btn-primary mt-2">Run your first check</a>
+    </div>
+
+    <!-- History table -->
+    <div id="history-table-wrap" class="d-none">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Type</th>
+                <th>Text Preview</th>
+                <th>Score</th>
+                <th>Verdict</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="text-muted small mt-2 text-end">Showing last 50 results</p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allHistory = [];
+
+const verdictColors = {
+  clean: 'success', low: 'info', medium: 'warning', high: 'danger'
+};
+const typeLabels = {
+  text: 'Text vs Text', web: 'Text vs Web', file: 'File vs Web'
+};
+const typeIcons = {
+  text: 'fa-align-left', web: 'fa-globe', file: 'fa-file'
+};
+
+function loadHistory() {
+  $.ajax({
+    url: '/checker/api/history/',
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    success: function(data) {
+      allHistory = data;
+      $('#history-loading').addClass('d-none');
+      if (data.length === 0) {
+        $('#history-empty').removeClass('d-none');
+      } else {
+        renderTable(data);
+      }
+    },
+    error: function(xhr) {
+      if (xhr.status === 401) window.location.href = '/accounts/login/';
+    }
+  });
+}
+
+function renderTable(data) {
+  $('#history-tbody').empty();
+  if (data.length === 0) {
+    $('#history-table-wrap').addClass('d-none');
+    $('#history-empty').removeClass('d-none');
+    return;
+  }
+  $('#history-empty').addClass('d-none');
+  $('#history-table-wrap').removeClass('d-none');
+
+  data.forEach(function(item) {
+    const color = verdictColors[item.verdict] || 'secondary';
+    const preview = item.original_text
+      ? item.original_text.substring(0, 60) + '...'
+      : '—';
+    const date = new Date(item.created_at).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    });
+
+    $('#history-tbody').append(`
+      <tr>
+        <td class="text-muted small">#${item.id}</td>
+        <td>
+          <i class="fas ${typeIcons[item.check_type] || 'fa-question'} me-1 text-primary"></i>
+          <small>${typeLabels[item.check_type] || item.check_type}</small>
+        </td>
+        <td><small class="text-muted">${preview}</small></td>
+        <td>
+          <span class="fw-bold text-${color}">${item.similarity_percentage}%</span>
+        </td>
+        <td>
+          <span class="badge bg-${color}">
+            ${item.verdict_display || item.verdict}
+          </span>
+        </td>
+        <td><small class="text-muted">${date}</small></td>
+        <td>
+          <a href="/checker/result/${item.id}/" class="btn btn-sm btn-outline-primary me-1">
+            <i class="fas fa-eye"></i>
+          </a>
+          <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${item.id}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>`);
+  });
+}
+
+// Delete
+$(document).on('click', '.btn-delete', function() {
+  const id = $(this).data('id');
+  if (!confirm('Delete this result?')) return;
+  $.ajax({
+    url: '/checker/api/result/' + id + '/',
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    success: function() {
+      allHistory = allHistory.filter(h => h.id !== id);
+      renderTable(allHistory);
+    }
+  });
+});
+
+// Filter
+$('#btn-filter').click(function() {
+  const verdict = $('#filter-verdict').val();
+  const type = $('#filter-type').val();
+  const search = $('#filter-search').val().toLowerCase();
+
+  let filtered = allHistory.filter(function(item) {
+    return (
+      (!verdict || item.verdict === verdict) &&
+      (!type || item.check_type === type) &&
+      (!search || item.original_text.toLowerCase().includes(search))
+    );
+  });
+  renderTable(filtered);
+});
+
+loadHistory();
+</script>
+{% endblock %}

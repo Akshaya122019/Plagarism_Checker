@@ -1,0 +1,297 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-users">—</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+          <i class="fas fa-users"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-checks">—</div>
+          <div class="stat-label">Total Checks</div>
+        </div>
+        <div class="stat-icon bg-success bg-opacity-10 text-success">
+          <i class="fas fa-file-alt"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-today">—</div>
+          <div class="stat-label">Checks Today</div>
+        </div>
+        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+          <i class="fas fa-calendar-day"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-plagiarism">—</div>
+          <div class="stat-label">Plagiarism Found</div>
+        </div>
+        <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-avg">—</div>
+          <div class="stat-label">Avg Similarity %</div>
+        </div>
+        <div class="stat-icon bg-info bg-opacity-10 text-info">
+          <i class="fas fa-percentage"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" id="s-week">—</div>
+          <div class="stat-label">Checks This Week</div>
+        </div>
+        <div class="stat-icon bg-purple bg-opacity-10"
+          style="background:#f0ebff!important;color:#7c3aed!important;">
+          <i class="fas fa-chart-line"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="fas fa-chart-area text-primary me-2"></i>Daily Checks — Last 30 Days
+      </div>
+      <canvas id="chart-daily" height="100"></canvas>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="fas fa-chart-pie text-warning me-2"></i>Verdict Breakdown
+      </div>
+      <canvas id="chart-verdict" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="fas fa-chart-bar text-success me-2"></i>Check Types
+      </div>
+      <canvas id="chart-type" height="140"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="fas fa-user-plus text-info me-2"></i>New Users — Last 30 Days
+      </div>
+      <canvas id="chart-users" height="140"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Recent checks -->
+<div class="chart-card">
+  <div class="chart-title">
+    <i class="fas fa-clock text-muted me-2"></i>Recent Checks
+  </div>
+  <div class="table-responsive">
+    <table class="table dash-table mb-0">
+      <thead>
+        <tr>
+          <th>#</th><th>User</th><th>Type</th>
+          <th>Similarity</th><th>Verdict</th><th>Date</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="recent-tbody">
+        <tr><td colspan="7" class="text-center py-3 text-muted">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const verdictColors = {
+  clean:'#198754', low:'#0dcaf0', medium:'#ffc107', high:'#dc3545'
+};
+const verdictBg = {
+  clean:'success', low:'info', medium:'warning', high:'danger'
+};
+const typeLabels = {
+  text:'Text vs Text', web:'Text vs Web', file:'File vs Web'
+};
+
+let dailyChart, verdictChart, typeChart, usersChart;
+
+function initCharts() {
+  dailyChart = new Chart(document.getElementById('chart-daily'), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+      label: 'Checks',
+      data: [], fill: true,
+      borderColor: '#4e9af1',
+      backgroundColor: 'rgba(78,154,241,.12)',
+      tension: 0.4, pointRadius: 3,
+    }]},
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+
+  verdictChart = new Chart(document.getElementById('chart-verdict'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Clean','Low','Medium','High'],
+      datasets: [{ data: [0,0,0,0],
+        backgroundColor: ['#198754','#0dcaf0','#ffc107','#dc3545'],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      cutout: '65%',
+    }
+  });
+
+  typeChart = new Chart(document.getElementById('chart-type'), {
+    type: 'bar',
+    data: {
+      labels: ['Text vs Text','Text vs Web','File vs Web'],
+      datasets: [{
+        data: [0, 0, 0],
+        backgroundColor: ['#4e9af1','#198754','#ffc107'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+
+  usersChart = new Chart(document.getElementById('chart-users'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{
+      label: 'New Users',
+      data: [],
+      backgroundColor: 'rgba(13,202,240,.6)',
+      borderRadius: 6,
+    }]},
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+
+function loadStats() {
+  $.get('/dashboard/stats/', function(data) {
+    const s = data.summary;
+
+    // Stat cards
+    $('#s-users').text(s.total_users);
+    $('#s-checks').text(s.total_checks);
+    $('#s-today').text(s.checks_today);
+    $('#s-plagiarism').text(s.plagiarism_found);
+    $('#s-avg').text(s.avg_similarity + '%');
+    $('#s-week').text(s.checks_week);
+
+    // Daily chart
+    dailyChart.data.labels   = data.daily_checks.map(d => d.date);
+    dailyChart.data.datasets[0].data = data.daily_checks.map(d => d.count);
+    dailyChart.update();
+
+    // Verdict doughnut
+    const vMap = { clean:0, low:0, medium:0, high:0 };
+    data.verdict_data.forEach(v => { if (vMap[v.verdict] !== undefined) vMap[v.verdict] = v.count; });
+    verdictChart.data.datasets[0].data = [vMap.clean, vMap.low, vMap.medium, vMap.high];
+    verdictChart.update();
+
+    // Type bar
+    const tMap = { text:0, web:0, file:0 };
+    data.type_data.forEach(t => { if (tMap[t.check_type] !== undefined) tMap[t.check_type] = t.count; });
+    typeChart.data.datasets[0].data = [tMap.text, tMap.web, tMap.file];
+    typeChart.update();
+
+    // Users chart
+    usersChart.data.labels   = data.new_users.map(d => d.date);
+    usersChart.data.datasets[0].data = data.new_users.map(d => d.count);
+    usersChart.update();
+
+    // Recent checks table
+    $('#recent-tbody').empty();
+    if (!data.recent_checks.length) {
+      $('#recent-tbody').html('<tr><td colspan="7" class="text-center text-muted py-3">No checks yet</td></tr>');
+      return;
+    }
+    data.recent_checks.forEach(function(c) {
+      const color = verdictBg[c.verdict] || 'secondary';
+      $('#recent-tbody').append(`
+        <tr>
+          <td class="text-muted">#${c.id}</td>
+          <td><i class="fas fa-user text-muted me-1"></i>${c.username}</td>
+          <td><small>${typeLabels[c.check_type] || c.check_type}</small></td>
+          <td><span class="fw-bold text-${color}">${c.similarity}%</span></td>
+          <td><span class="badge bg-${color}">${c.verdict}</span></td>
+          <td><small class="text-muted">${c.created_at}</small></td>
+          <td>
+            <a href="/checker/result/${c.id}/"
+               class="btn btn-sm btn-outline-primary" target="_blank">
+              <i class="fas fa-eye"></i>
+            </a>
+          </td>
+        </tr>`);
+    });
+  });
+}
+
+initCharts();
+loadStats();
+setInterval(loadStats, 60000); // auto-refresh every 60s
+</script>
+{% endblock %}

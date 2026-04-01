@@ -1,0 +1,141 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}All Checks{% endblock %}
+{% block page_title %}All Plagiarism Checks{% endblock %}
+{% block nav_checks %}active{% endblock %}
+
+{% block content %}
+<div class="chart-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="chart-title mb-0">
+      <i class="fas fa-file-alt text-primary me-2"></i>
+      All Checks <span id="checks-count" class="badge bg-secondary ms-2">0</span>
+    </div>
+    <div class="d-flex gap-2">
+      <select id="filter-verdict" class="form-select form-select-sm">
+        <option value="">All Verdicts</option>
+        <option value="clean">Clean</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+      <select id="filter-type" class="form-select form-select-sm">
+        <option value="">All Types</option>
+        <option value="text">Text vs Text</option>
+        <option value="web">Text vs Web</option>
+        <option value="file">File vs Web</option>
+      </select>
+      <input type="text" id="search-user" class="form-control form-control-sm"
+        placeholder="Search username...">
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table dash-table mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Type</th>
+          <th>Similarity</th>
+          <th>Verdict</th>
+          <th>Plagiarism</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="checks-tbody">
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allChecks = [];
+const typeLabels = {
+  text: 'Text vs Text', web: 'Text vs Web', file: 'File vs Web'
+};
+const verdictBg = {
+  clean: 'success', low: 'info', medium: 'warning', high: 'danger'
+};
+
+function loadChecks() {
+  $.get('/dashboard/checks/data/', function(data) {
+    allChecks = data.checks;
+    $('#checks-count').text(allChecks.length);
+    renderChecks(allChecks);
+  });
+}
+
+function renderChecks(checks) {
+  $('#checks-tbody').empty();
+  if (!checks.length) {
+    $('#checks-tbody').html(
+      '<tr><td colspan="8" class="text-center text-muted py-4">No checks found</td></tr>'
+    );
+    return;
+  }
+  checks.forEach(function(c) {
+    const color = verdictBg[c.verdict] || 'secondary';
+    const detected = c.plagiarism
+      ? '<span class="badge bg-danger">Yes</span>'
+      : '<span class="badge bg-success">No</span>';
+
+    $('#checks-tbody').append(`
+      <tr id="check-row-${c.id}">
+        <td class="text-muted">#${c.id}</td>
+        <td><i class="fas fa-user text-muted me-1"></i>${c.username}</td>
+        <td><small>${typeLabels[c.check_type] || c.check_type}</small></td>
+        <td><span class="fw-bold text-${color}">${c.similarity}%</span></td>
+        <td><span class="badge bg-${color}">${c.verdict}</span></td>
+        <td>${detected}</td>
+        <td><small class="text-muted">${c.created_at}</small></td>
+        <td>
+          <a href="/checker/result/${c.id}/"
+             class="btn btn-sm btn-outline-primary me-1" target="_blank">
+            <i class="fas fa-eye"></i>
+          </a>
+          <button class="btn btn-sm btn-outline-danger btn-del-check"
+            data-id="${c.id}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>`);
+  });
+}
+
+// Filters
+function applyFilters() {
+  const verdict = $('#filter-verdict').val();
+  const type    = $('#filter-type').val();
+  const user    = $('#search-user').val().toLowerCase();
+  const filtered = allChecks.filter(c =>
+    (!verdict || c.verdict === verdict) &&
+    (!type    || c.check_type === type) &&
+    (!user    || c.username.toLowerCase().includes(user))
+  );
+  renderChecks(filtered);
+}
+$('#filter-verdict, #filter-type').on('change', applyFilters);
+$('#search-user').on('input', applyFilters);
+
+// Delete check
+$(document).on('click', '.btn-del-check', function() {
+  const id = $(this).data('id');
+  if (!confirm('Delete this check result?')) return;
+  $.post('/dashboard/checks/delete/' + id + '/', function(res) {
+    if (res.success) {
+      $('#check-row-' + id).fadeOut(300, function() { $(this).remove(); });
+    }
+  });
+});
+
+loadChecks();
+</script>
+{% endblock %}

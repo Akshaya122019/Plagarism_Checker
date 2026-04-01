@@ -1,0 +1,125 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Users{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block nav_users %}active{% endblock %}
+
+{% block content %}
+<div class="chart-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="chart-title mb-0">
+      <i class="fas fa-users text-primary me-2"></i>
+      All Users <span id="user-count" class="badge bg-secondary ms-2">0</span>
+    </div>
+    <input type="text" id="search-user" class="form-control form-control-sm w-auto"
+      placeholder="Search username or email...">
+  </div>
+
+  <div class="table-responsive">
+    <table class="table dash-table mb-0" id="users-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Checks</th>
+          <th>Joined</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="users-tbody">
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allUsers = [];
+
+function loadUsers() {
+  $.get('/dashboard/users/data/', function(data) {
+    allUsers = data.users;
+    $('#user-count').text(allUsers.length);
+    renderUsers(allUsers);
+  });
+}
+
+function renderUsers(users) {
+  $('#users-tbody').empty();
+  if (!users.length) {
+    $('#users-tbody').html(
+      '<tr><td colspan="8" class="text-center text-muted py-4">No users found</td></tr>'
+    );
+    return;
+  }
+  users.forEach(function(u) {
+    const statusBadge = u.is_active
+      ? '<span class="badge bg-success">Active</span>'
+      : '<span class="badge bg-danger">Blocked</span>';
+    const toggleLabel = u.is_active ? 'Block' : 'Unblock';
+    const toggleClass = u.is_active ? 'btn-outline-warning' : 'btn-outline-success';
+
+    $('#users-tbody').append(`
+      <tr id="user-row-${u.id}">
+        <td class="text-muted">#${u.id}</td>
+        <td><i class="fas fa-user text-muted me-1"></i><strong>${u.username}</strong></td>
+        <td>${u.full_name}</td>
+        <td class="text-muted small">${u.email}</td>
+        <td><span class="badge bg-primary">${u.total_checks}</span></td>
+        <td><small class="text-muted">${u.date_joined}</small></td>
+        <td>${statusBadge}</td>
+        <td>
+          <button class="btn btn-sm ${toggleClass} btn-toggle me-1"
+            data-id="${u.id}" data-active="${u.is_active}">
+            ${toggleLabel}
+          </button>
+          <button class="btn btn-sm btn-outline-danger btn-del-user" data-id="${u.id}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      </tr>`);
+  });
+}
+
+// Search filter
+$('#search-user').on('input', function() {
+  const q = $(this).val().toLowerCase();
+  const filtered = allUsers.filter(u =>
+    u.username.toLowerCase().includes(q) ||
+    u.email.toLowerCase().includes(q)
+  );
+  renderUsers(filtered);
+});
+
+// Toggle active
+$(document).on('click', '.btn-toggle', function() {
+  const id = $(this).data('id');
+  $.post('/dashboard/users/toggle/' + id + '/', function(res) {
+    if (res.success) loadUsers();
+  });
+});
+
+// Delete user
+$(document).on('click', '.btn-del-user', function() {
+  const id = $(this).data('id');
+  if (!confirm('Permanently delete this user and all their data?')) return;
+  $.post('/dashboard/users/delete/' + id + '/', function(res) {
+    if (res.success) {
+      $('#user-row-' + id).fadeOut(300, function() { $(this).remove(); });
+      const count = parseInt($('#user-count').text()) - 1;
+      $('#user-count').text(count);
+    }
+  });
+});
+
+loadUsers();
+</script>
+{% endblock %}

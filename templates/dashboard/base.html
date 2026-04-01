@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Dashboard{% endblock %} — PlagiarismChecker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background:#f4f6f9; font-family:'Segoe UI',sans-serif; }
+
+    /* Sidebar */
+    #sidebar {
+      width: 240px; min-height: 100vh;
+      background: #1e2a3a; position: fixed;
+      top: 0; left: 0; z-index: 100;
+      transition: width .25s;
+    }
+    #sidebar .brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    #sidebar .brand span {
+      font-size: 1.1rem; font-weight: 700;
+      color: #fff; letter-spacing: .3px;
+    }
+    #sidebar .nav-link {
+      color: rgba(255,255,255,.65);
+      padding: 10px 20px; border-radius: 0;
+      font-size: .92rem; font-weight: 500;
+      transition: all .2s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #sidebar .nav-link:hover,
+    #sidebar .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,.1);
+      border-left: 3px solid #4e9af1;
+      padding-left: 17px;
+    }
+    #sidebar .nav-section {
+      color: rgba(255,255,255,.35);
+      font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      padding: 16px 20px 6px;
+    }
+
+    /* Main content */
+    #main { margin-left: 240px; min-height: 100vh; }
+
+    /* Topbar */
+    #topbar {
+      background: #fff; border-bottom: 1px solid #e9ecef;
+      padding: 12px 24px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 99;
+    }
+    #topbar .page-title {
+      font-size: 1.1rem; font-weight: 700;
+      color: #1e2a3a; margin: 0;
+    }
+
+    /* Stat cards */
+    .stat-card {
+      background: #fff; border-radius: 12px;
+      border: none; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 20px 24px; transition: transform .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-card .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center;
+      justify-content: center; font-size: 1.2rem;
+    }
+    .stat-card .stat-value {
+      font-size: 1.8rem; font-weight: 700;
+      color: #1e2a3a; line-height: 1;
+    }
+    .stat-card .stat-label {
+      font-size: .8rem; color: #6c757d;
+      font-weight: 500; margin-top: 4px;
+    }
+
+    /* Chart cards */
+    .chart-card {
+      background: #fff; border-radius: 12px;
+      border: none; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      padding: 20px 24px;
+    }
+    .chart-card .chart-title {
+      font-size: .95rem; font-weight: 600;
+      color: #1e2a3a; margin-bottom: 16px;
+    }
+
+    /* Table */
+    .dash-table th {
+      font-size: .78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px;
+      color: #6c757d; background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .dash-table td { font-size: .88rem; vertical-align: middle; }
+
+    @media(max-width:768px) {
+      #sidebar { width: 0; overflow: hidden; }
+      #main { margin-left: 0; }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <i class="fas fa-search-plus text-info me-2"></i>
+    <span>PlagiarismChecker</span><br>
+    <small style="color:rgba(255,255,255,.4);font-size:.72rem;">Admin Panel</small>
+  </div>
+
+  <div class="nav-section">Main</div>
+  <a href="/dashboard/" class="nav-link {% block nav_home %}{% endblock %}">
+    <i class="fas fa-tachometer-alt"></i> Dashboard
+  </a>
+
+  <div class="nav-section">Management</div>
+  <a href="/dashboard/users/" class="nav-link {% block nav_users %}{% endblock %}">
+    <i class="fas fa-users"></i> Users
+  </a>
+  <a href="/dashboard/checks/" class="nav-link {% block nav_checks %}{% endblock %}">
+    <i class="fas fa-file-alt"></i> All Checks
+  </a>
+
+  <div class="nav-section">App</div>
+  <a href="/checker/" class="nav-link">
+    <i class="fas fa-search"></i> Go to Checker
+  </a>
+  <a href="/admin/" class="nav-link" target="_blank">
+    <i class="fas fa-cog"></i> Django Admin
+  </a>
+
+  <div class="nav-section mt-3">Account</div>
+  <a href="/accounts/logout/" class="nav-link text-danger-emphasis">
+    <i class="fas fa-sign-out-alt"></i> Logout
+  </a>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <!-- Topbar -->
+  <div id="topbar">
+    <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-muted small">
+        <i class="fas fa-user-shield me-1 text-primary"></i>
+        {{ request.user.username }}
+      </span>
+      <span class="badge bg-primary">Admin</span>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="p-4">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+  const Auth = {
+    getToken: () => localStorage.getItem('access_token'),
+    headers: () => ({
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+    })
+  };
+  // Add CSRF token to all jQuery AJAX POST requests automatically
+$.ajaxSetup({
+  beforeSend: function(xhr, settings) {
+    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type)) {
+      xhr.setRequestHeader(
+        'X-CSRFToken',
+        '{{ csrf_token }}'
+      );
+    }
+  }
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}Result #{{ check_id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="fw-bold mb-0">
+        <i class="fas fa-file-alt text-primary me-2"></i>Result Report
+      </h2>
+      <div>
+        <a href="/checker/history/" class="btn btn-outline-secondary me-2">
+          <i class="fas fa-arrow-left me-1"></i>History
+        </a>
+        <a href="/checker/" class="btn btn-primary">
+          <i class="fas fa-plus me-1"></i>New Check
+        </a>
+      </div>
+    </div>
+
+    <div id="result-loading" class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+      <p class="text-muted mt-2">Loading report...</p>
+    </div>
+
+    <div id="result-content" class="d-none">
+
+      <!-- Score summary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="row text-center g-3">
+            <div class="col-6 col-md-3 border-end">
+              <div id="r-score" class="display-4 fw-bold"></div>
+              <p class="text-muted mb-0 small">Similarity</p>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+              <div id="r-verdict" class="mt-2"></div>
+              <p class="text-muted mb-0 small">Verdict</p>
+            </div>
+            <div class="col-6 col-md-3 border-end">
+              <div id="r-type" class="fs-5 fw-bold mt-2"></div>
+              <p class="text-muted mb-0 small">Check Type</p>
+            </div>
+            <div class="col-6 col-md-3">
+              <div id="r-date" class="fs-6 fw-bold mt-2"></div>
+              <p class="text-muted mb-0 small">Date</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Similarity bar -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="fw-semibold">Similarity Score</span>
+            <span id="r-bar-label" class="fw-bold"></span>
+          </div>
+          <div class="progress" style="height:20px; border-radius:10px;">
+            <div id="r-progress-bar"
+              class="progress-bar"
+              role="progressbar"
+              style="width:0%; border-radius:10px; transition: width 1s ease;">
+            </div>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-success">Clean (0%)</small>
+            <small class="text-warning">Medium (40%)</small>
+            <small class="text-danger">High (70%+)</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Web sources results -->
+      <div id="sources-section" class="d-none mb-4">
+        <h5 class="fw-bold mb-3">
+          <i class="fas fa-globe text-primary me-2"></i>Web Sources Checked
+        </h5>
+        <div id="sources-list"></div>
+      </div>
+
+      <!-- Matched sentences -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">
+            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+            Matched Sentences
+          </span>
+          <span id="r-match-count" class="badge bg-warning text-dark">0</span>
+        </div>
+        <div class="card-body p-0">
+          <div id="r-matches-list"></div>
+        </div>
+      </div>
+
+      <!-- Original text -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-align-left text-muted me-2"></i>Original Text
+        </div>
+        <div class="card-body">
+          <div id="r-original-text"
+            class="p-3 bg-light rounded"
+            style="white-space:pre-wrap; font-size:0.9rem; max-height:400px; overflow-y:auto;">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const checkId = {{ check_id }};
+
+const verdictColors = {
+  clean: 'success', low: 'info', medium: 'warning', high: 'danger'
+};
+const typeLabels = {
+  text: 'Text vs Text', web: 'Text vs Web', file: 'File vs Web'
+};
+
+$.ajax({
+  url: '/checker/api/result/' + checkId + '/',
+  method: 'GET',
+  headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+  success: function(data) {
+    $('#result-loading').addClass('d-none');
+    $('#result-content').removeClass('d-none');
+
+    const color = verdictColors[data.verdict] || 'secondary';
+    const pct = data.similarity_percentage;
+
+    // Score
+    $('#r-score').text(pct + '%').addClass('text-' + color);
+
+    // Verdict
+    $('#r-verdict').html(
+      `<span class="badge bg-${color} fs-6">${data.verdict_display || data.verdict}</span>`
+    );
+
+    // Type
+    $('#r-type').text(typeLabels[data.check_type] || data.check_type);
+
+    // Date
+    const date = new Date(data.created_at).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    $('#r-date').text(date);
+
+    // Progress bar
+    $('#r-bar-label').text(pct + '%');
+    setTimeout(function() {
+      $('#r-progress-bar')
+        .css('width', pct + '%')
+        .addClass('bg-' + color);
+    }, 300);
+
+    // Web sources
+    if (data.source_results && data.source_results.length > 0) {
+      $('#sources-section').removeClass('d-none');
+      data.source_results.forEach(function(src) {
+        const srcColor = verdictColors[src.verdict] || 'secondary';
+        $('#sources-list').append(`
+          <div class="card border-0 shadow-sm mb-2">
+            <div class="card-body py-3 px-4">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <p class="mb-0 fw-semibold small">${src.title || src.url}</p>
+                  <a href="${src.url}" target="_blank"
+                    class="text-muted small text-truncate d-block"
+                    style="max-width:500px;">${src.url}</a>
+                </div>
+                <div class="text-end">
+                  <span class="fw-bold text-${srcColor} fs-5">
+                    ${src.similarity_percentage}%
+                  </span>
+                  <br>
+                  <span class="badge bg-${srcColor}">${src.verdict}</span>
+                </div>
+              </div>
+            </div>
+          </div>`);
+      });
+    }
+
+    // Matched sentences
+    const matches = data.matched_sentences || [];
+    $('#r-match-count').text(matches.length);
+
+    if (matches.length === 0) {
+      $('#r-matches-list').html(`
+        <div class="p-4 text-success text-center">
+          <i class="fas fa-check-circle me-2"></i>No significant matches found.
+        </div>`);
+    } else {
+      matches.forEach(function(m) {
+        $('#r-matches-list').append(`
+          <div class="border-bottom p-3">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="badge bg-danger">${m.similarity}% match</span>
+              ${m.source_url
+                ? `<a href="${m.source_url}" target="_blank"
+                     class="text-muted small text-truncate"
+                     style="max-width:350px;">${m.source_title || m.source_url}</a>`
+                : ''}
+            </div>
+            <div class="p-2 rounded mb-2 bg-danger-subtle text-danger-emphasis small">
+              ${m.original_sentence}
+            </div>
+            ${m.matched_sentence
+              ? `<div class="p-2 rounded bg-light text-muted small fst-italic">
+                   "${m.matched_sentence}"
+                 </div>`
+              : ''}
+          </div>`);
+      });
+    }
+
+    // Original text with highlighted matches
+    let originalText = data.original_text || '';
+    const matchedPhrases = matches.map(m => m.original_sentence).filter(Boolean);
+    matchedPhrases.forEach(function(phrase) {
+      const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      originalText = originalText.replace(
+        new RegExp(escaped, 'gi'),
+        `<mark class="bg-warning">$&</mark>`
+      );
+    });
+    $('#r-original-text').html(originalText || '<em class="text-muted">No text available</em>');
+  },
+  error: function(xhr) {
+    if (xhr.status === 401) window.location.href = '/accounts/login/';
+    if (xhr.status === 404) {
+      $('#result-loading').html(
+        '<p class="text-danger">Result not found.</p>'
+      );
+    }
+  }
+});
+</script>
+{% endblock %}

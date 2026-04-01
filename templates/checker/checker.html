@@ -1,0 +1,422 @@
+{% extends 'base.html' %}
+{% block title %}Plagiarism Checker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+      <h2 class="fw-bold">Plagiarism Checker</h2>
+      <p class="text-muted">Check your text against other text or live web sources</p>
+    </div>
+
+    <!-- Check Type Tabs -->
+    <ul class="nav nav-pills justify-content-center mb-4" id="checkTabs">
+      <li class="nav-item">
+        <button class="nav-link active px-4" data-tab="text">
+          <i class="fas fa-align-left me-2"></i>Text vs Text
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link px-4" data-tab="web">
+          <i class="fas fa-globe me-2"></i>Text vs Web
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link px-4" data-tab="file">
+          <i class="fas fa-file-upload me-2"></i>File vs Web
+        </button>
+      </li>
+    </ul>
+
+    <!-- Error alert -->
+    <div id="error-alert" class="alert alert-danger d-none"></div>
+
+    <!-- ── Tab: Text vs Text ── -->
+    <div id="tab-text" class="tab-content-panel">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Original Text</label>
+              <textarea id="text1" class="form-control" rows="10"
+                placeholder="Paste your original text here (min 50 characters)..."></textarea>
+              <small class="text-muted"><span id="count1">0</span> characters</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Compare Text</label>
+              <textarea id="text2" class="form-control" rows="10"
+                placeholder="Paste the text to compare against..."></textarea>
+              <small class="text-muted"><span id="count2">0</span> characters</small>
+            </div>
+          </div>
+          <div class="text-center mt-4">
+            <button id="btn-text-check" class="btn btn-primary btn-lg px-5">
+              <i class="fas fa-search me-2"></i>Check Plagiarism
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: Text vs Web ── -->
+    <div id="tab-web" class="tab-content-panel d-none">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <label class="form-label fw-semibold">Your Text</label>
+          <textarea id="web-text" class="form-control" rows="10"
+            placeholder="Paste your text here. We'll search the web and compare..."></textarea>
+          <small class="text-muted"><span id="count-web">0</span> characters</small>
+          <div class="row mt-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Sources to check</label>
+              <select id="web-sources" class="form-select">
+                <option value="3">3 sources (faster)</option>
+                <option value="5" selected>5 sources (recommended)</option>
+                <option value="8">8 sources (thorough)</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <button id="btn-web-check" class="btn btn-primary btn-lg w-100">
+                <i class="fas fa-globe me-2"></i>Check vs Web
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: File vs Web ── -->
+    <div id="tab-file" class="tab-content-panel d-none">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div id="drop-zone" class="border-2 border-dashed rounded p-5 text-center mb-3">
+            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+            <p class="fw-semibold mb-1">Drag & drop your file here</p>
+            <p class="text-muted small mb-3">Supports PDF, DOCX, TXT (max 5MB)</p>
+            <input type="file" id="file-input" class="d-none" accept=".pdf,.docx,.txt">
+            <button class="btn btn-outline-primary" onclick="$('#file-input').click()">
+              Browse File
+            </button>
+          </div>
+          <div id="file-selected" class="alert alert-info d-none">
+            <i class="fas fa-file me-2"></i>
+            <span id="file-name"></span>
+            <button class="btn btn-sm btn-outline-danger ms-3" id="btn-clear-file">Remove</button>
+          </div>
+          <div class="row align-items-end">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Sources to check</label>
+              <select id="file-sources" class="form-select">
+                <option value="3">3 sources (faster)</option>
+                <option value="5" selected>5 sources (recommended)</option>
+                <option value="8">8 sources (thorough)</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <button id="btn-file-check" class="btn btn-primary btn-lg w-100">
+                <i class="fas fa-search me-2"></i>Check File
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Loading overlay ── -->
+    <div id="loading-panel" class="d-none">
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-5 text-center">
+          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+          <h5 class="fw-semibold" id="loading-msg">Analyzing your text...</h5>
+          <p class="text-muted" id="loading-sub">This may take a few seconds</p>
+          <div class="progress mt-3" style="height:6px;">
+            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+              style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Results Panel ── -->
+    <div id="results-panel" class="d-none mt-4">
+
+      <!-- Score card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="row align-items-center">
+            <div class="col-md-4 text-center border-end">
+              <div id="score-circle" class="display-3 fw-bold mb-1">0%</div>
+              <p class="text-muted mb-0">Similarity Score</p>
+            </div>
+            <div class="col-md-4 text-center border-end">
+              <div id="verdict-badge" class="fs-4 fw-bold mb-1"></div>
+              <p class="text-muted mb-0">Verdict</p>
+            </div>
+            <div class="col-md-4 text-center">
+              <div id="sources-count" class="fs-4 fw-bold mb-1">—</div>
+              <p class="text-muted mb-0">Sources Checked</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View full result button -->
+      <div class="text-center mb-4">
+        <a id="btn-full-result" href="#" class="btn btn-outline-primary me-2">
+          <i class="fas fa-eye me-1"></i>View Full Report
+        </a>
+        <button id="btn-new-check" class="btn btn-outline-secondary">
+          <i class="fas fa-redo me-1"></i>New Check
+        </button>
+      </div>
+
+      <!-- Matched sentences preview -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+          <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+          Matched Sentences <span id="match-count" class="badge bg-warning text-dark ms-2">0</span>
+        </div>
+        <div class="card-body p-0">
+          <div id="matches-list" class="list-group list-group-flush"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Tab switching ─────────────────────────────────────────────
+$('#checkTabs .nav-link').click(function() {
+  $('#checkTabs .nav-link').removeClass('active');
+  $(this).addClass('active');
+  $('.tab-content-panel').addClass('d-none');
+  $('#tab-' + $(this).data('tab')).removeClass('d-none');
+  $('#results-panel, #loading-panel, #error-alert').addClass('d-none');
+});
+
+// ── Character counters ────────────────────────────────────────
+$('#text1').on('input', function() { $('#count1').text($(this).val().length); });
+$('#text2').on('input', function() { $('#count2').text($(this).val().length); });
+$('#web-text').on('input', function() { $('#count-web').text($(this).val().length); });
+
+// ── File drag & drop ──────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('border-primary', 'bg-light');
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('border-primary', 'bg-light');
+});
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('border-primary', 'bg-light');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+});
+$('#file-input').change(function() {
+  if (this.files[0]) setFile(this.files[0]);
+});
+function setFile(file) {
+  $('#file-name').text(file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)');
+  $('#file-selected').removeClass('d-none');
+}
+$('#btn-clear-file').click(function() {
+  $('#file-input').val('');
+  $('#file-selected').addClass('d-none');
+});
+
+// ── Progress bar animation ────────────────────────────────────
+let progressInterval;
+function startProgress(msg, sub) {
+  $('#loading-msg').text(msg);
+  $('#loading-sub').text(sub);
+  $('#loading-panel').removeClass('d-none');
+  $('#results-panel, #error-alert').addClass('d-none');
+  let width = 0;
+  progressInterval = setInterval(function() {
+    if (width < 85) {
+      width += Math.random() * 8;
+      $('#progress-bar').css('width', Math.min(width, 85) + '%');
+    }
+  }, 400);
+}
+function stopProgress() {
+  clearInterval(progressInterval);
+  $('#progress-bar').css('width', '100%');
+  setTimeout(() => $('#loading-panel').addClass('d-none'), 400);
+}
+
+// ── Show results ──────────────────────────────────────────────
+function showResults(data) {
+  stopProgress();
+
+  const pct = data.similarity_percentage;
+  $('#score-circle').text(pct + '%');
+
+  // Color the score
+  if (pct >= 70) $('#score-circle').removeClass().addClass('display-3 fw-bold mb-1 text-danger');
+  else if (pct >= 40) $('#score-circle').removeClass().addClass('display-3 fw-bold mb-1 text-warning');
+  else if (pct >= 15) $('#score-circle').removeClass().addClass('display-3 fw-bold mb-1 text-info');
+  else $('#score-circle').removeClass().addClass('display-3 fw-bold mb-1 text-success');
+
+  // Verdict badge
+  const verdictMap = {
+    'high':   ['High Plagiarism', 'danger'],
+    'medium': ['Medium Plagiarism', 'warning'],
+    'low':    ['Low Plagiarism', 'info'],
+    'clean':  ['Clean', 'success'],
+  };
+  const [label, color] = verdictMap[data.verdict] || ['Unknown', 'secondary'];
+  $('#verdict-badge').html(`<span class="badge bg-${color} fs-6">${label}</span>`);
+
+  // Sources count
+  const srcCount = data.sources_checked || (data.source_results ? data.source_results.length : '—');
+  $('#sources-count').text(srcCount);
+
+  // Full report link
+  if (data.check_id) {
+    $('#btn-full-result').attr('href', '/checker/result/' + data.check_id + '/');
+  }
+
+  // Matched sentences preview (first 5)
+  const matches = data.matched_sentences || [];
+  $('#match-count').text(matches.length);
+  $('#matches-list').empty();
+
+  if (matches.length === 0) {
+    $('#matches-list').append(`
+      <div class="list-group-item text-success py-3">
+        <i class="fas fa-check-circle me-2"></i>No significant matches found.
+      </div>`);
+  } else {
+    matches.slice(0, 5).forEach(function(m) {
+      $('#matches-list').append(`
+        <div class="list-group-item py-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-semibold text-danger">
+              <i class="fas fa-exclamation-circle me-1"></i>Match: ${m.similarity}%
+            </small>
+            ${m.source_url ? `<small class="text-muted">${m.source_title || m.source_url}</small>` : ''}
+          </div>
+          <p class="mb-1 text-danger-emphasis bg-danger-subtle p-2 rounded small">${m.original_sentence}</p>
+          ${m.matched_sentence ? `<p class="mb-0 text-muted small fst-italic">"${m.matched_sentence}"</p>` : ''}
+        </div>`);
+    });
+    if (matches.length > 5) {
+      $('#matches-list').append(`
+        <div class="list-group-item text-center py-2">
+          <small class="text-muted">+${matches.length - 5} more matches in full report</small>
+        </div>`);
+    }
+  }
+
+  $('#results-panel').removeClass('d-none');
+  $('html, body').animate({ scrollTop: $('#results-panel').offset().top - 20 }, 500);
+}
+
+// ── Error handler ─────────────────────────────────────────────
+function showError(msg) {
+  stopProgress();
+  $('#error-alert').text(msg).removeClass('d-none');
+}
+
+// ── Text vs Text check ────────────────────────────────────────
+$('#btn-text-check').click(function() {
+  const text1 = $('#text1').val().trim();
+  const text2 = $('#text2').val().trim();
+  if (text1.length < 50 || text2.length < 50) {
+    showError('Both texts must be at least 50 characters long.');
+    return;
+  }
+  startProgress('Comparing texts...', 'Running similarity analysis');
+  $.ajax({
+    url: '/checker/api/check/text/',
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    data: JSON.stringify({ text1, text2 }),
+    success: showResults,
+    error: function(xhr) {
+      if (xhr.status === 401) {
+        window.location.href = '/accounts/login/';
+      } else {
+        showError(xhr.responseJSON?.error || 'Something went wrong. Please try again.');
+      }
+    }
+  });
+});
+
+// ── Text vs Web check ─────────────────────────────────────────
+$('#btn-web-check').click(function() {
+  const text = $('#web-text').val().trim();
+  if (text.length < 50) {
+    showError('Text must be at least 50 characters long.');
+    return;
+  }
+  const num_sources = parseInt($('#web-sources').val());
+  startProgress('Searching the web...', 'Fetching and comparing web sources — this takes ~15 seconds');
+  $.ajax({
+    url: '/checker/api/check/web/',
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    data: JSON.stringify({ text, num_sources }),
+    success: showResults,
+    error: function(xhr) {
+      if (xhr.status === 401) {
+        window.location.href = '/accounts/login/';
+      } else {
+        showError(xhr.responseJSON?.error || 'Could not fetch web sources. Try again.');
+      }
+    }
+  });
+});
+
+// ── File vs Web check ─────────────────────────────────────────
+$('#btn-file-check').click(function() {
+  const fileInput = $('#file-input')[0];
+  if (!fileInput.files.length) {
+    showError('Please select a file first.');
+    return;
+  }
+  const num_sources = parseInt($('#file-sources').val());
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('num_sources', num_sources);
+
+  startProgress('Processing your file...', 'Extracting text and searching the web');
+  $.ajax({
+    url: '/checker/api/check/file/',
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: showResults,
+    error: function(xhr) {
+      if (xhr.status === 401) {
+        window.location.href = '/accounts/login/';
+      } else {
+        showError(xhr.responseJSON?.error || 'File check failed. Try again.');
+      }
+    }
+  });
+});
+
+$('#btn-new-check').click(function() {
+  $('#results-panel').addClass('d-none');
+  $('#text1, #text2, #web-text').val('');
+  $('#count1, #count2, #count-web').text('0');
+  $('#file-input').val('');
+  $('#file-selected').addClass('d-none');
+  $('html, body').animate({ scrollTop: 0 }, 300);
+});
+</script>
+{% endblock %}
