@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+
+    <h4 class="fw-bold mb-4">
+      <i class="fas fa-user-circle text-primary me-2"></i>My Profile
+    </h4>
+
+    <!-- Alerts -->
+    <div id="success-msg" class="alert alert-success alert-dismissible fade show d-none">
+      <i class="fas fa-check-circle me-2"></i>
+      <span id="success-text"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div id="error-msg" class="alert alert-danger alert-dismissible fade show d-none">
+      <i class="fas fa-exclamation-circle me-2"></i>
+      <span id="error-text"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Loading -->
+    <div id="profile-loading" class="text-center py-5">
+      <div class="spinner-border text-primary mb-3"></div>
+      <p class="text-muted">Loading your profile...</p>
+    </div>
+
+    <!-- Profile content -->
+    <div id="profile-content" class="d-none">
+      <div class="row g-4">
+
+        <!-- Left: Profile card -->
+        <div class="col-md-7">
+          <div class="card border-0 shadow-sm">
+
+            <!-- Card header -->
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 px-4">
+              <h6 class="fw-bold mb-0 text-muted text-uppercase"
+                style="font-size:.75rem;letter-spacing:1px;">
+                Personal Information
+              </h6>
+              <!-- Edit / Cancel buttons -->
+              <div>
+                <button id="btn-edit" class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-pencil-alt me-1"></i>Edit
+                </button>
+                <button id="btn-cancel" class="btn btn-sm btn-outline-secondary d-none">
+                  <i class="fas fa-times me-1"></i>Cancel
+                </button>
+              </div>
+            </div>
+
+            <div class="card-body p-4">
+
+              <!-- ── VIEW MODE ───────────────────────────────── -->
+              <div id="view-mode">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <p class="text-muted small mb-1">First Name</p>
+                    <p class="fw-semibold mb-0" id="view-first-name">—</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p class="text-muted small mb-1">Last Name</p>
+                    <p class="fw-semibold mb-0" id="view-last-name">—</p>
+                  </div>
+                  <div class="col-12">
+                    <hr class="my-2">
+                  </div>
+                  <div class="col-12">
+                    <p class="text-muted small mb-1">Username</p>
+                    <p class="fw-semibold mb-0" id="view-username">—</p>
+                  </div>
+                  <div class="col-12">
+                    <p class="text-muted small mb-1">Email</p>
+                    <p class="fw-semibold mb-0" id="view-email">—</p>
+                  </div>
+                  <div class="col-12">
+                    <hr class="my-2">
+                  </div>
+                  <div class="col-md-6">
+                    <p class="text-muted small mb-1">Organization</p>
+                    <p class="fw-semibold mb-0" id="view-organization">—</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p class="text-muted small mb-1">Phone</p>
+                    <p class="fw-semibold mb-0" id="view-phone">—</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── EDIT MODE (hidden by default) ─────────── -->
+              <div id="edit-mode" class="d-none">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">First Name</label>
+                    <input type="text" id="edit-first-name" class="form-control"
+                      placeholder="Enter first name">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Last Name</label>
+                    <input type="text" id="edit-last-name" class="form-control"
+                      placeholder="Enter last name">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">
+                      Username
+                      <span class="text-muted fw-normal small">(cannot be changed)</span>
+                    </label>
+                    <input type="text" id="edit-username"
+                      class="form-control bg-light" disabled>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">
+                      Email
+                      <span class="text-muted fw-normal small">(cannot be changed)</span>
+                    </label>
+                    <input type="email" id="edit-email"
+                      class="form-control bg-light" disabled>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Organization</label>
+                    <input type="text" id="edit-organization" class="form-control"
+                      placeholder="Your company or institution">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label fw-semibold">Phone</label>
+                    <input type="text" id="edit-phone" class="form-control"
+                      placeholder="Your phone number">
+                  </div>
+                </div>
+
+                <!-- Save button — only visible in edit mode -->
+                <div class="d-flex gap-2 mt-4">
+                  <button id="btn-save" class="btn btn-primary px-4">
+                    <i class="fas fa-save me-2" id="save-icon"></i>
+                    <span id="btn-save-text">Save Changes</span>
+                    <span id="btn-spinner"
+                      class="spinner-border spinner-border-sm d-none ms-1"></span>
+                  </button>
+                  <button id="btn-cancel2" class="btn btn-outline-secondary px-4">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Stats + Quick links -->
+        <div class="col-md-5 d-flex flex-column gap-3">
+
+          <!-- Stats -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <h6 class="fw-bold mb-3 text-muted text-uppercase"
+                style="font-size:.75rem;letter-spacing:1px;">
+                Account Stats
+              </h6>
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-muted">
+                  <i class="fas fa-calendar me-2 text-primary"></i>Member since
+                </span>
+                <span id="stat-joined" class="fw-semibold">—</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-muted">
+                  <i class="fas fa-file-alt me-2 text-success"></i>Total checks
+                </span>
+                <span id="stat-checks" class="fw-semibold">
+                  <span class="spinner-border spinner-border-sm text-muted"></span>
+                </span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-muted">
+                  <i class="fas fa-shield-alt me-2 text-warning"></i>Account type
+                </span>
+                <span id="stat-type">—</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center py-2">
+                <span class="text-muted">
+                  <i class="fas fa-circle me-2 text-success"></i>Status
+                </span>
+                <span class="badge bg-success">Active</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick links -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <h6 class="fw-bold mb-3 text-muted text-uppercase"
+                style="font-size:.75rem;letter-spacing:1px;">
+                Quick Links
+              </h6>
+              <a href="/checker/" class="btn btn-outline-primary w-100 mb-2">
+                <i class="fas fa-search me-2"></i>New Plagiarism Check
+              </a>
+              <a href="/checker/history/" class="btn btn-outline-secondary w-100">
+                <i class="fas fa-history me-2"></i>View My History
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+
+  // Store profile data globally
+  let profileData = {};
+
+  // ── Helper: show view mode ─────────────────────────────────
+  function showViewMode() {
+    $('#view-mode').removeClass('d-none');
+    $('#edit-mode').addClass('d-none');
+    $('#btn-edit').removeClass('d-none');
+    $('#btn-cancel').addClass('d-none');
+  }
+
+  // ── Helper: show edit mode ─────────────────────────────────
+  function showEditMode() {
+    // Copy view data into edit fields
+    $('#edit-first-name').val(profileData.first_name  || '');
+    $('#edit-last-name').val(profileData.last_name    || '');
+    $('#edit-username').val(profileData.username      || '');
+    $('#edit-email').val(profileData.email            || '');
+    $('#edit-organization').val(profileData.organization || '');
+    $('#edit-phone').val(profileData.phone            || '');
+
+    $('#view-mode').addClass('d-none');
+    $('#edit-mode').removeClass('d-none');
+    $('#btn-edit').addClass('d-none');
+    $('#btn-cancel').removeClass('d-none');
+  }
+
+  // ── Helper: populate view mode fields ─────────────────────
+  function populateView(data) {
+    $('#view-first-name').text(data.first_name   || '—');
+    $('#view-last-name').text(data.last_name     || '—');
+    $('#view-username').text(data.username        || '—');
+    $('#view-email').text(data.email              || '—');
+    $('#view-organization').text(data.organization || '—');
+    $('#view-phone').text(data.phone              || '—');
+
+    // Stats
+    const joined = new Date(data.date_joined).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    });
+    $('#stat-joined').text(joined);
+    $('#stat-type').html(
+      data.is_staff
+        ? '<span class="badge bg-danger">Admin</span>'
+        : '<span class="badge bg-primary">User</span>'
+    );
+  }
+
+  // ── Load profile from API ──────────────────────────────────
+  $.ajax({
+    url: '/accounts/api/profile/',
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    success: function(data) {
+      profileData = data;
+      populateView(data);
+
+      // Load check count
+      $.ajax({
+        url: '/checker/api/history/',
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+        success: function(history) {
+          $('#stat-checks').text(history.length + ' checks');
+        },
+        error: function() {
+          $('#stat-checks').text('—');
+        }
+      });
+
+      // Show content
+      $('#profile-loading').addClass('d-none');
+      $('#profile-content').removeClass('d-none');
+    },
+    error: function(xhr) {
+      if (xhr.status === 401) {
+        window.location.href = '/accounts/login/?next=/accounts/profile/';
+      } else {
+        $('#profile-loading').html(
+          '<p class="text-danger">' +
+          '<i class="fas fa-exclamation-circle me-2"></i>' +
+          'Could not load profile. Please refresh.</p>'
+        );
+      }
+    }
+  });
+
+  // ── Edit button click ──────────────────────────────────────
+  $('#btn-edit').click(function() {
+    showEditMode();
+  });
+
+  // ── Cancel buttons ─────────────────────────────────────────
+  $('#btn-cancel, #btn-cancel2').click(function() {
+    showViewMode();
+    $('#success-msg, #error-msg').addClass('d-none');
+  });
+
+  // ── Save button ────────────────────────────────────────────
+  $('#btn-save').click(function() {
+    const data = {
+      first_name:   $('#edit-first-name').val().trim(),
+      last_name:    $('#edit-last-name').val().trim(),
+      organization: $('#edit-organization').val().trim(),
+      phone:        $('#edit-phone').val().trim(),
+    };
+
+    // Loading state
+    $('#btn-save-text').text('Saving...');
+    $('#save-icon').addClass('d-none');
+    $('#btn-spinner').removeClass('d-none');
+    $('#btn-save').prop('disabled', true);
+    $('#success-msg, #error-msg').addClass('d-none');
+
+    $.ajax({
+      url: '/accounts/api/profile/',
+      method: 'PUT',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+      data: JSON.stringify(data),
+      success: function() {
+        // Update local profileData
+        profileData.first_name   = data.first_name;
+        profileData.last_name    = data.last_name;
+        profileData.organization = data.organization;
+        profileData.phone        = data.phone;
+
+        // Update view mode with new values
+        populateView(profileData);
+
+        // Switch back to view mode
+        showViewMode();
+
+        // Show success
+        $('#success-text').text('Profile updated successfully!');
+        $('#success-msg').removeClass('d-none');
+        setTimeout(() => $('#success-msg').addClass('d-none'), 4000);
+      },
+      error: function(xhr) {
+        const msg = xhr.responseJSON?.message || 'Failed to update. Please try again.';
+        $('#error-text').text(msg);
+        $('#error-msg').removeClass('d-none');
+      },
+      complete: function() {
+        $('#btn-save-text').text('Save Changes');
+        $('#save-icon').removeClass('d-none');
+        $('#btn-spinner').addClass('d-none');
+        $('#btn-save').prop('disabled', false);
+      }
+    });
+  });
+
+});
+</script>
+{% endblock %}

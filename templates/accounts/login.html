@@ -25,11 +25,13 @@
 
         <button id="login-btn" class="btn btn-primary w-100 py-2 fw-semibold">
           <span id="btn-text">Login</span>
-          <span id="btn-spinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
+          <span id="btn-spinner"
+            class="spinner-border spinner-border-sm d-none ms-2"></span>
         </button>
 
         <p class="text-center mt-3 mb-0">
-          Don't have an account? <a href="/accounts/register/">Register</a>
+          Don't have an account?
+          <a href="/accounts/register/">Register</a>
         </p>
       </div>
     </div>
@@ -44,7 +46,8 @@ function doLogin() {
   const password = $('#password').val();
 
   if (!username || !password) {
-    $('#error-msg').text('Please enter username and password.').removeClass('d-none');
+    $('#error-msg').text('Please enter username and password.')
+                  .removeClass('d-none');
     return;
   }
 
@@ -57,15 +60,19 @@ function doLogin() {
     url: '/accounts/api/login/',
     method: 'POST',
     contentType: 'application/json',
+    // ✅ This sends cookies with the request so session is saved
+    xhrFields: { withCredentials: true },
     data: JSON.stringify({ username, password }),
     success: function(res) {
-      // Store JWT tokens
+      // Store JWT in localStorage
       Auth.setTokens(res.access, res.refresh);
 
-      // Redirect — use ?next param if present, else go to checker
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get('next') || '/checker/';
-      window.location.href = next;
+      // Small delay to ensure session cookie is saved by browser
+      setTimeout(function() {
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '/checker/';
+        window.location.href = next;
+      }, 300);
     },
     error: function(xhr) {
       const msg = xhr.responseJSON?.detail || 'Invalid username or password.';
@@ -78,11 +85,7 @@ function doLogin() {
 }
 
 $('#login-btn').click(doLogin);
-$('#password').keypress(function(e) {
-  if (e.which === 13) doLogin();
-});
-$('#username').keypress(function(e) {
-  if (e.which === 13) $('#password').focus();
-});
+$('#password').keypress(e => { if (e.which === 13) doLogin(); });
+$('#username').keypress(e => { if (e.which === 13) $('#password').focus(); });
 </script>
 {% endblock %}
